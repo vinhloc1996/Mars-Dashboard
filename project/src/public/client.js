@@ -1,14 +1,23 @@
-let store = {
-    user: { name: "Student" },
-    apod: '',
-    rovers: ['Curiosity', 'Opportunity', 'Spirit'],
-}
+let store = Immutable.Map({
+    rovers: Immutable.List(['Curiosity', 'Opportunity', 'Spirit']),
+    info: Immutable.Map({
+        'curiosity': null,
+        'opportunity': null,
+        'spirit': null
+    }),
+    photos: Immutable.Map({
+        'curiosity': null,
+        'opportunity': null,
+        'spirit': null
+    })    
+})
+const BACK_END_URL = 'http://localhost:3000/';
 
 // add our markup to the page
 const root = document.getElementById('root')
 
-const updateStore = (store, newState) => {
-    store = Object.assign(store, newState)
+const updateStore = (state, newState) => {
+    store = state.merge(newState)
     render(root, store)
 }
 
@@ -91,13 +100,62 @@ const ImageOfTheDay = (apod) => {
     }
 }
 
+const showTabsOfRovers = (rovers) => {
+    let tabsHtml = `
+        <div class="container">
+            <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    ${rovers.map((rover, i) => (`<button class="nav-link ${i == 0 ? 'active' : ''}" id="pills-${rover}-tab" data-bs-toggle="pill" data-bs-target="#pills-${rover}" type="button" role="tab" aria-controls="pills-${rover}" aria-selected="true">${rover}</button>`))}
+                </li>
+            </ul>
+            <div class="tab-content" id="pills-tabContent">
+                ${rovers.map((rover, i) => (`<div class="tab-pane fade show ${i == 0 ? 'active' : ''}" id="pills-${rover}" role="tabpanel" aria-labelledby="pills-${rover}-tab">${contentOfRover(rover)}</div>`))}
+            </div>
+        </div>
+    `
+    return tabsHtml
+}
+
+const contentOfRover = (rover) => {
+    const {photo_manifest: {name, landing_date, launch_date, status, max_sol, max_date, total_photos}} = rover
+    return (`
+        <div class="container">
+            <h3>${name} Information</h3>
+            <p class="font-monospace">Landing Date: ${landing_date}</p>
+            <p class="font-monospace">Launch Date: ${launch_date}</p>
+            <p class="font-monospace">Current Status: ${status}</p>
+            <p class="font-monospace">Latest Sent Date: ${max_date}</p>
+        </div>
+    `)
+}
+
+
 // ------------------------------------------------------  API CALLS
+
+const getRoverInfo = (rover) => {
+    return fetch(`${BACK_END_URL}rover/info?rover=${rover}`)
+        .then(res => res.json())
+        .then(data => {
+            updateStore(store, store.toJS().info.set(rover.toLowerCase(), data.photo_manifest))
+            return data;
+        })
+}
+
+const getPhotos = (rover) => {
+    console.log('earth date', store.toJS().info[rover].toJS().photos[0].earth_date)
+    return fetch(`${BACK_END_URL}rover/photos?rover=${rover}&earth_date=${store.toJS().info[rover].toJS().photos[0].earth_date}`)
+        .then(res => res.json())
+        .then(data => {
+            updateStore(store, store.get('photos').set(rover.toLowerCase(), Immutable.List(data)))
+            return data;
+        })
+}
 
 // Example API call
 const getImageOfTheDay = (state) => {
     let { apod } = state
 
-    fetch(`http://localhost:3000/apod`)
+    fetch(`${BACK_END_URL}apod`)
         .then(res => res.json())
         .then(apod => updateStore(store, { apod }))
 
