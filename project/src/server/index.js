@@ -16,22 +16,12 @@ app.use('/', express.static(path.join(__dirname, '../public')))
 
 // your API calls
 
-app.get('/apod', async (req, res) => {
-    try {
-        let image = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${process.env.API_KEY}`)
-            .then(res => res.json())
-        res.send({ image })
-    } catch (err) {
-        console.log('error:', err);
-    }
-})
-
 //https://api.nasa.gov/mars-photos/api/v1/manifests/curiosity?api_key=tM5cXiCcc0SYbFxyIepUWfQQGFebzO4EBnwacnCG
 app.get('/rover/info', async (req, res) => {
     try {
         let info = await fetch(`${BASE_API_URL}manifests/${req.query.rover}?api_key=${process.env.API_KEY}`)
-            .then(res => {
-                let data = res.json()
+            .then(res => res.json())
+            .then(data => {
                 let lastThreeDatePhotos = data.photo_manifest.photos.slice(-1)
                 data = Object.assign(data, {
                     photo_manifest: {
@@ -39,7 +29,7 @@ app.get('/rover/info', async (req, res) => {
                         photos: lastThreeDatePhotos
                     }
                 })
-                return JSON.stringify(data)
+                return data
             })
         res.send({ info })
     } catch (err) {
@@ -47,14 +37,16 @@ app.get('/rover/info', async (req, res) => {
     }
 })
 
+//https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?earth_date=2022-07-23&page=1&api_key=tM5cXiCcc0SYbFxyIepUWfQQGFebzO4EBnwacnCG
 app.get('/rover/photos', async (req, res) => {
     try {
-        let images = await fetch(`${BASE_API_URL}rovers/${req.query.rover}/photos?earth_date=${req.query.date}&api_key=${process.env.API_KEY}`)
-            .then(res => {
-                let photos = res.json().photos
+        let images = await fetch(`${BASE_API_URL}rovers/${req.query.rover}/photos?earth_date=${req.query.date}&page=1&api_key=${process.env.API_KEY}`)
+            .then(res => res.json())
+            .then(data => {
+                let photos = data.photos
                 let constructPhotos = photos.map(photo => ({id: photo.id, img_src: photo.img_src}))
 
-                return JSON.stringify(constructPhotos)
+                return constructPhotos;
             })
         res.send({ images })
     } catch (err) {
